@@ -1,0 +1,56 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+/* A 6 s example: two scenes on a 120 BPM grid (2 s bars), every style set from t in render(t). */
+:root { --bg:#0E1116; --ink:#F2F4F8; --muted:#8A93A6; --accent:#FFB23E; --sans:'Helvetica Neue',Arial,sans-serif; --mono:Menlo,'DejaVu Sans Mono',monospace; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { width:1080px; height:1920px; overflow:hidden; background:var(--bg); color:var(--ink); font-family:var(--sans); }
+.scene { position:absolute; inset:0; }
+.h { position:absolute; left:80px; right:120px; top:300px; font-size:110px; font-weight:700; line-height:1.02; letter-spacing:-.02em; }
+.h em { font-style:normal; color:var(--accent); }
+.w { display:inline-block; }
+.sub { position:absolute; left:80px; top:560px; font-family:var(--mono); font-size:34px; color:var(--muted); }
+#cv { position:absolute; left:240px; top:720px; width:600px; height:600px; }
+.chip { position:absolute; left:80px; font-family:var(--mono); font-size:44px; padding:22px 30px; border-radius:16px; background:#1A1F29; white-space:nowrap; }
+.chip b { color:var(--accent); font-weight:400; }
+</style></head>
+<body>
+<section class="scene" id="s1">
+  <div class="h" id="h1">Every frame is<br><em>render(t).</em></div>
+  <div class="sub" id="sub">frame <span id="fr">000</span> / 180</div>
+  <canvas id="cv" width="600" height="600"></canvas>
+</section>
+<section class="scene" id="s2">
+  <div class="h" id="h2">Then ffmpeg<br>does the rest.</div>
+  <div class="chip" id="c0" style="top:640px"><b>1</b>  render.py → frames/f0000.jpg</div>
+  <div class="chip" id="c1" style="top:780px"><b>2</b>  music.py → music.wav</div>
+  <div class="chip" id="c2" style="top:920px"><b>3</b>  mux.sh → demo.mp4</div>
+</section>
+
+<script src="../scripts/engine.js"></script>
+<script>
+const BEAT = 0.5, BAR = 2;                       // 120 BPM, the synth kit's default
+const SC = { s1: [0, 3], s2: [3, 6.01] };
+['#h1', '#h2'].forEach(s => words($(s)));
+const g = $('#cv').getContext('2d');
+
+function pop(el, t, a, dur = .35, from = 40) { const p = out3(S(t, a, a + dur));
+  el.style.opacity = p; el.style.transform = `translateY(${(1 - p) * from}px)`; }
+
+window.render = (t) => {
+  for (const [id, [a, b]] of Object.entries(SC)) $('#' + id).style.opacity = vis(t, a, b);
+  // scene 1: a square that turns a quarter per beat and pulses on the downbeat
+  stagger($('#h1'), t, 0.1); pop($('#sub'), t, 0.6);
+  $('#fr').textContent = String(Math.min(180, Math.floor(t * 30))).padStart(3, '0');
+  g.clearRect(0, 0, 600, 600); g.save(); g.translate(300, 300);
+  const beat = Math.floor(t / BEAT), f = (t % BEAT) / BEAT;
+  g.rotate((beat + inout(clamp(f * 2.5))) * Math.PI / 2);
+  const s = 260 * (1 + 0.12 * Math.exp(-f * 8));
+  g.fillStyle = beat % 4 === 0 ? '#FFB23E' : '#F2F4F8'; g.fillRect(-s / 2, -s / 2, s, s); g.restore();
+  // scene 2: three steps, one per beat
+  stagger($('#h2'), t, 3.05); [0, 1, 2].forEach(i => pop($('#c' + i), t, 3.5 + i * BEAT));
+  return true;
+};
+window.__ready = (async () => { await document.fonts.ready; return true; })();
+</script>
+</body></html>
